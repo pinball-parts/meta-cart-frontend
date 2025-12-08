@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meta Cart</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #22d3ee;
+        --border: #2e3b51;
+      }
+      [data-theme="light"] {
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #0ea5e9;
+        --border: #e2e8f0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .brand {
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      main {
+        padding: 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        font-size: 14px;
+      }
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+      button {
+        background: linear-gradient(135deg, var(--accent), #38bdf8);
+        color: #0b1120;
+        border: none;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.08s ease, box-shadow 0.12s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(34, 211, 238, 0.25);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .item {
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        cursor: pointer;
+        transition: border-color 0.1s ease;
+      }
+      .item:hover {
+        border-color: var(--accent);
+      }
+      .pill {
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .error {
+        color: #f43f5e;
+        font-size: 13px;
+      }
+      .inline {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body data-theme="dark">
+    <div id="app">
+      <header>
+        <div class="brand">Meta Cart</div>
+        <div class="controls">
+          <label class="inline" style="cursor: pointer">
+            <input type="checkbox" v-model="themeIsLight" />
+            <span class="muted">Light mode</span>
+          </label>
+        </div>
+      </header>
+
+      <main>
+        <section class="card">
+          <h2>Create a cart</h2>
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div>
+              <label>Owner</label>
+              <input v-model="newCart.owner" placeholder="who owns this cart" />
+            </div>
+            <div>
+              <label>Title</label>
+              <input v-model="newCart.title" placeholder="Pinball rebuild" />
+            </div>
+            <div>
+              <label>Description</label>
+              <textarea v-model="newCart.description" placeholder="Scope, priorities, notes"></textarea>
+            </div>
+            <button @click="createCart" :disabled="loading">{{ loading ? "Saving..." : "Create cart" }}</button>
+            <div class="error" v-if="error">{{ error }}</div>
+          </div>
+
+          <div style="margin-top: 20px">
+            <h2 style="margin-bottom: 8px">Carts</h2>
+            <div class="list" v-if="carts.length">
+              <div v-for="cart in carts" :key="cart.id" class="item" @click="selectCart(cart)">
+                <div>
+                  <div style="font-weight: 600">{{ cart.title }}</div>
+                  <div class="muted">{{ cart.description || "No description" }}</div>
+                </div>
+                <span class="pill">{{ cart.owner }}</span>
+              </div>
+            </div>
+            <div class="muted" v-else>No carts yet.</div>
+          </div>
+        </section>
+
+        <section class="card">
+          <template v-if="selectedCart">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+              <h2 style="margin: 0">{{ selectedCart.title }}</h2>
+              <span class="pill">Owner: {{ selectedCart.owner }}</span>
+            </div>
+            <p class="muted">{{ selectedCart.description || "No description" }}</p>
+
+            <div style="margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px">
+              <h3 style="margin-top: 0">Add item</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px">
+                <div>
+                  <label>Origin shop</label>
+                  <input v-model="newItem.origin_shop" placeholder="E.g. Marco, PBL" />
+                </div>
+                <div>
+                  <label>Reference</label>
+                  <input v-model="newItem.reference" placeholder="SKU or vendor ref" />
+                </div>
+                <div style="grid-column: 1 / -1">
+                  <label>Product name</label>
+                  <input v-model="newItem.product_name" placeholder="Flipper assembly" />
+                </div>
+                <div style="grid-column: 1 / -1">
+                  <label>Product description</label>
+                  <textarea v-model="newItem.product_description" placeholder="Notes or fitment"></textarea>
+                </div>
+                <div style="grid-column: 1 / -1">
+                  <label>URL</label>
+                  <input v-model="newItem.url" placeholder="https://shop.example/item" />
+                </div>
+                <div>
+                  <label>Quantity</label>
+                  <input type="number" min="1" v-model.number="newItem.quantity" />
+                </div>
+              </div>
+              <div style="margin-top: 12px" class="inline">
+                <button @click="createItem" :disabled="loading">{{ loading ? "Saving..." : "Add item" }}</button>
+                <span class="muted" v-if="itemMessage">{{ itemMessage }}</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 20px">
+              <h3 style="margin-top: 0">Items</h3>
+              <div class="list" v-if="items.length">
+                <div v-for="item in items" :key="item.id" class="item">
+                  <div style="flex: 1">
+                    <div style="font-weight: 600">{{ item.product_name }}</div>
+                    <div class="muted">{{ item.product_description || "No description" }}</div>
+                    <div class="muted">
+                      <a :href="item.url" target="_blank" rel="noreferrer">Product link</a>
+                      <span style="margin-left: 6px">• Qty {{ item.quantity }}</span>
+                    </div>
+                  </div>
+                  <div style="text-align: right">
+                    <div class="pill">{{ item.origin_shop || "Unknown shop" }}</div>
+                    <div class="muted">Ref: {{ item.reference || "N/A" }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="muted" v-else>No items yet.</div>
+            </div>
+          </template>
+          <template v-else>
+            <h2>Pick a cart to see details</h2>
+            <p class="muted">Select a cart from the left panel to manage its items.</p>
+          </template>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+      const { createApp } = Vue;
+      createApp({
+        data() {
+          return {
+            apiBase: "http://localhost:8080",
+            carts: [],
+            items: [],
+            selectedCart: null,
+            newCart: { owner: "", title: "", description: "" },
+            newItem: {
+              origin_shop: "",
+              url: "",
+              product_name: "",
+              product_description: "",
+              reference: "",
+              quantity: 1,
+            },
+            loading: false,
+            error: "",
+            itemMessage: "",
+            themeIsLight: false,
+          };
+        },
+        watch: {
+          themeIsLight(val) {
+            document.body.setAttribute("data-theme", val ? "light" : "dark");
+          },
+        },
+        methods: {
+          async fetchCarts() {
+            const res = await fetch(this.apiBase + "/carts");
+            if (!res.ok) throw new Error("Failed to load carts");
+            this.carts = await res.json();
+          },
+          async createCart() {
+            this.error = "";
+            this.loading = true;
+            try {
+              const res = await fetch(this.apiBase + "/carts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(this.newCart),
+              });
+              if (!res.ok) throw new Error("Failed to create cart");
+              const cart = await res.json();
+              this.carts.unshift(cart);
+              this.selectedCart = cart;
+              this.items = [];
+              this.newCart = { owner: "", title: "", description: "" };
+            } catch (err) {
+              this.error = err.message;
+            } finally {
+              this.loading = false;
+            }
+          },
+          async selectCart(cart) {
+            this.selectedCart = cart;
+            await this.fetchItems(cart.id);
+          },
+          async fetchItems(cartId) {
+            const res = await fetch(`${this.apiBase}/carts/${cartId}`);
+            if (!res.ok) {
+              this.items = [];
+              return;
+            }
+            const payload = await res.json();
+            this.items = payload.items || [];
+          },
+          async createItem() {
+            if (!this.selectedCart) return;
+            this.loading = true;
+            this.itemMessage = "";
+            try {
+              const res = await fetch(`${this.apiBase}/carts/${this.selectedCart.id}/items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(this.newItem),
+              });
+              if (!res.ok) throw new Error("Failed to add item");
+              const item = await res.json();
+              this.items.unshift(item);
+              this.newItem = {
+                origin_shop: "",
+                url: "",
+                product_name: "",
+                product_description: "",
+                reference: "",
+                quantity: 1,
+              };
+              this.itemMessage = "Item added";
+            } catch (err) {
+              this.itemMessage = err.message;
+            } finally {
+              this.loading = false;
+            }
+          },
+        },
+        async mounted() {
+          try {
+            await this.fetchCarts();
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
