@@ -1,11 +1,18 @@
 # meta-cart-frontend
 
-Lightweight Vue 3 single-page app (CDN build) to manage meta carts and their items.
+Vue 3 + Vite frontend managed with `pnpm`. The app lists carts, shows cart details, and adds items; merchants endpoints are wired for future use.
 
-## Running
-Open `index.html` in a browser while the backend runs on `http://localhost:8080`. No build step required.
+## Setup
+```bash
+cd meta-cart-frontend
+pnpm install
+pnpm dev   # http://localhost:5173, expects backend at http://localhost:8080 or VITE_API_BASE
+pnpm build
+pnpm preview
+```
 
-## Features
-- Create carts and view the list
-- Open cart details and add items with origin shop, URL, and references
-- Clean layout with light/dark toggle inspired by ChatGPT
+## Structure
+- `src/App.vue` layout and theme toggle
+- `src/components/*` presentational components
+- `src/api.js` REST calls (uses `VITE_API_BASE`, defaults to `http://localhost:8080`)
+- `src/style.css` shared styling
