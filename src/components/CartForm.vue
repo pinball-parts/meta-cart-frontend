@@ -13,7 +13,6 @@
       <textarea v-model="local.description" placeholder="Scope, priorities, notes"></textarea>
     </label>
     <button @click="submit" :disabled="loading">{{ modeText }}</button>
-    <p class="error" v-if="error">{{ error.text }}</p>
   </div>
 </template>
 
@@ -30,24 +29,17 @@ const props = defineProps({
 const emit = defineEmits(["submit"]);
 
 const local = reactive({ owner: "", title: "", description: "" });
-const error = reactive({ text: "" });
 
 watch(
   () => props.modelValue,
-  (val) => {
-    Object.assign(local, val || { owner: "", title: "", description: "" });
-  },
+  (val) => Object.assign(local, val || { owner: "", title: "", description: "" }),
   { immediate: true }
 );
 
 const modeText = computed(() => (props.modelValue?.id ? "Update cart" : "Create cart"));
 
 function submit() {
-  error.text = "";
-  if (!local.owner || !local.title) {
-    error.text = "Owner and title are required";
-    return;
-  }
+  if (!local.owner || !local.title) return;
   emit("submit", { ...local });
 }
 </script>
@@ -63,10 +55,6 @@ label {
   flex-direction: column;
   gap: 6px;
   color: var(--muted);
-  font-size: 13px;
-}
-.error {
-  color: #f43f5e;
   font-size: 13px;
 }
 </style>

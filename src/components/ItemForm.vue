@@ -1,12 +1,17 @@
 <template>
   <div class="grid">
+    <label class="wide">
+      <span>Product URL</span>
+      <input v-model="local.url" placeholder="https://shop.example/item" />
+    </label>
     <label>
       <span>Merchant</span>
-      <select v-model="local.merchant_id">
+      <select v-model="local.merchant_id" @change="handleMerchantChange">
         <option disabled value="">Select merchant</option>
         <option v-for="m in merchants" :key="m.id" :value="m.id">
           {{ m.site_name }} ({{ m.site_base_url }})
         </option>
+        <option value="__create__">+ Create merchant</option>
       </select>
     </label>
     <label>
@@ -20,10 +25,6 @@
     <label class="wide">
       <span>Product description</span>
       <textarea v-model="local.product_description" placeholder="Notes or fitment"></textarea>
-    </label>
-    <label class="wide">
-      <span>URL</span>
-      <input v-model="local.url" placeholder="https://shop.example/item" />
     </label>
     <label>
       <span>Quantity</span>
@@ -39,25 +40,25 @@
 <script setup>
 import { computed, reactive, watch } from "vue";
 
-  const props = defineProps({
-    loading: Boolean,
-    modelValue: {
-      type: Object,
-      default: () => ({
-        merchant_id: "",
-        url: "",
-        product_name: "",
-        product_description: "",
-        reference: "",
-        quantity: 1,
-      }),
-    },
-    merchants: {
-      type: Array,
-      default: () => [],
-    },
-  });
-  const emit = defineEmits(["submit"]);
+const props = defineProps({
+  loading: Boolean,
+  modelValue: {
+    type: Object,
+    default: () => ({
+      merchant_id: "",
+      url: "",
+      product_name: "",
+      product_description: "",
+      reference: "",
+      quantity: 1,
+    }),
+  },
+  merchants: {
+    type: Array,
+    default: () => [],
+  },
+});
+const emit = defineEmits(["submit", "create-merchant"]);
 
 const local = reactive({
   merchant_id: "",
@@ -74,11 +75,29 @@ watch(
   (val) => {
     Object.assign(local, val || {});
     if (!local.quantity) local.quantity = 1;
+    message.text = "";
   },
   { immediate: true }
 );
 
+watch(
+  () => local.url,
+  (url) => {
+    const match = props.merchants.find((m) => url && url.startsWith(m.site_base_url));
+    if (match) {
+      local.merchant_id = match.id;
+    }
+  }
+);
+
 const modeText = computed(() => (props.modelValue?.id ? "Update item" : "Add item"));
+
+function handleMerchantChange() {
+  if (local.merchant_id === "__create__") {
+    local.merchant_id = "";
+    emit("create-merchant", { ...local });
+  }
+}
 
 function submit() {
   message.text = "";

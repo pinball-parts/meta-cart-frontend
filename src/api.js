@@ -19,6 +19,9 @@ export const api = {
     const { data } = await axios.put(`${apiBase}/carts/${id}`, payload);
     return data;
   },
+  async deleteCart(id) {
+    await axios.delete(`${apiBase}/carts/${id}`);
+  },
   async addItem(cartId, payload) {
     const { data } = await axios.post(`${apiBase}/carts/${cartId}/items`, payload);
     return data;

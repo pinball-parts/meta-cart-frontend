@@ -13,7 +13,11 @@
           <div class="title">{{ cart.title }}</div>
           <div class="muted">{{ cart.description || "No description" }}</div>
         </div>
-        <span class="pill">{{ cart.owner }}</span>
+        <div class="inline">
+          <span class="pill">{{ cart.owner }}</span>
+          <button class="ghost small" @click.stop="$emit('edit', cart)">Edit</button>
+          <button class="ghost small danger" @click.stop="$emit('delete', cart)">Delete</button>
+        </div>
       </div>
     </div>
     <div class="muted" v-else>No carts yet.</div>
@@ -25,6 +29,7 @@ defineProps({
   carts: { type: Array, default: () => [] },
   selectedId: String,
 });
+defineEmits(["select", "edit", "delete"]);
 </script>
 
 <style scoped>
@@ -51,5 +56,18 @@ defineProps({
 }
 .title {
   font-weight: 600;
+}
+.inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.small {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.danger {
+  border-color: #f43f5e;
+  color: #f43f5e;
 }
 </style>

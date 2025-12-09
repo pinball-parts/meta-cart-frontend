@@ -2,6 +2,12 @@
   <div :data-theme="theme">
     <header class="header">
       <div class="brand">Meta Cart</div>
+      <nav class="nav">
+        <button class="ghost" :class="{ active: currentView === 'carts' }" @click="toCarts">Carts</button>
+        <button class="ghost" :class="{ active: currentView === 'merchants' }" @click="currentView = 'merchants'">
+          Merchants
+        </button>
+      </nav>
       <div class="controls">
         <label class="toggle">
           <input type="checkbox" v-model="isLight" />
@@ -9,15 +15,29 @@
         </label>
       </div>
     </header>
-    <main class="layout">
-      <section class="card sidebar">
-        <div class="sidebar-header">
-          <h2 style="margin: 0">Carts</h2>
-          <button @click="openCartModal()">New cart</button>
-        </div>
-        <cart-list :carts="carts" :selected-id="selectedCart?.cart?.id" @select="selectCart" />
-      </section>
+
+    <main v-if="currentView === 'carts'" class="layout single">
       <section class="card content">
+        <h2>Carts</h2>
+        <cart-list
+          :carts="carts"
+          :selected-id="selectedCart?.cart?.id"
+          @select="selectCart"
+          @edit="openCartModal"
+          @delete="deleteCart"
+        />
+      </section>
+    </main>
+
+    <main v-else-if="currentView === 'items'" class="layout single">
+      <section class="card content">
+        <div class="item-header">
+          <div>
+            <h2>{{ selectedCart?.cart?.title }}</h2>
+            <p class="muted">{{ selectedCart?.cart?.description || "No description" }}</p>
+          </div>
+          <button class="ghost" @click="toCarts">Back to carts</button>
+        </div>
         <cart-detail
           v-if="selectedCart"
           :cart="selectedCart.cart"
@@ -25,44 +45,41 @@
           :loading="busy"
           :merchants="merchants"
           @add-item="openItemModal"
-          @edit-cart="openCartModal(selectedCart.cart)"
           @edit-item="openItemModal"
         />
-        <div v-else class="muted">Pick a cart to see details.</div>
+        <div v-else class="muted">No cart selected.</div>
       </section>
     </main>
 
-    <div class="merchant-fab">
-      <button class="ghost" @click="openMerchantModal">Manage merchants</button>
-    </div>
+<main v-else class="layout single">
+  <section class="card content">
+    <h2>Merchants</h2>
+    <merchant-list :merchants="merchants" @edit="openMerchantModal" @delete="deleteMerchant" />
+  </section>
+</main>
+
+    <button class="fab" v-if="currentView === 'carts'" @click="openCartModal()">+</button>
+    <button class="fab" v-else-if="currentView === 'merchants'" @click="openMerchantModal()">+</button>
+    <button class="fab" v-else-if="currentView === 'items'" @click="openItemModal()">+</button>
 
     <modal v-if="showCartModal" @close="closeCartModal">
-      <template #title>{{ cartFormMode === "edit" ? "Edit cart" : "New cart" }}</template>
-      <cart-form
-        :model-value="cartFormData"
-        :loading="busy"
-        @submit="submitCart"
-      />
+      <template #title>{{ cartFormData.id ? "Edit cart" : "New cart" }}</template>
+      <cart-form :model-value="cartFormData" :loading="busy" @submit="submitCart" />
     </modal>
 
-    <modal v-if="showItemModal" @close="closeItemModal">
-      <template #title>{{ itemFormMode === "edit" ? "Edit item" : "Add item" }}</template>
+    <modal v-if="ui.showMerchantModal" @close="closeMerchantModal">
+      <template #title>{{ ui.merchantDraft.id ? "Edit merchant" : "New merchant" }}</template>
+      <merchant-form :model-value="ui.merchantDraft" :loading="busy" @submit="submitMerchant" />
+    </modal>
+
+    <modal v-if="ui.showItemModal" @close="closeItemModal">
+      <template #title>{{ ui.itemDraft.id ? "Edit item" : "Add item" }}</template>
       <item-form
-        :model-value="itemFormData"
+        :model-value="ui.itemDraft"
         :loading="busy"
         :merchants="merchants"
         @submit="submitItem"
-      />
-    </modal>
-
-    <modal v-if="showMerchantModal" @close="closeMerchantModal">
-      <template #title>Merchants</template>
-      <merchant-manager
-        :merchants="merchants"
-        :loading="busy"
-        @create="createMerchant"
-        @update="updateMerchant"
-        @delete="deleteMerchant"
+        @create-merchant="openMerchantModalFromItem"
       />
     </modal>
   </div>
@@ -74,29 +91,28 @@ import CartForm from "./components/CartForm.vue";
 import CartList from "./components/CartList.vue";
 import CartDetail from "./components/CartDetail.vue";
 import ItemForm from "./components/ItemForm.vue";
-import MerchantManager from "./components/MerchantManager.vue";
+import MerchantForm from "./components/MerchantForm.vue";
+import MerchantList from "./components/MerchantList.vue";
 import Modal from "./components/Modal.vue";
 import { api } from "./api";
+import { useUiStore } from "./stores/ui";
 
 const carts = ref([]);
 const selectedCart = ref(null);
 const busy = ref(false);
 const isLight = ref(false);
 const theme = ref("dark");
+const currentView = ref("carts");
 const showCartModal = ref(false);
-const showItemModal = ref(false);
-const showMerchantModal = ref(false);
-const cartFormMode = ref("create");
-const cartFormData = ref({});
-const itemFormMode = ref("create");
-const itemFormData = ref({});
+const cartFormData = ref({ owner: "", title: "", description: "" });
 const merchants = ref([]);
+const ui = useUiStore();
 
 watch(isLight, (val) => {
   theme.value = val ? "light" : "dark";
 });
 
-async function loadCarts() {
+async function loadAll() {
   busy.value = true;
   try {
     const [cartData, merchantData] = await Promise.all([api.listCarts(), api.listMerchants()]);
@@ -107,22 +123,26 @@ async function loadCarts() {
   }
 }
 
+function toCarts() {
+  currentView.value = "carts";
+  selectedCart.value = null;
+}
+
 async function selectCart(cart) {
   busy.value = true;
   try {
     const detail = await api.getCart(cart.id);
     selectedCart.value = detail;
+    currentView.value = "items";
   } finally {
     busy.value = false;
   }
 }
 
 function openCartModal(cart = null) {
-  cartFormMode.value = cart ? "edit" : "create";
   cartFormData.value = cart ? { ...cart } : { owner: "", title: "", description: "" };
   showCartModal.value = true;
 }
-
 function closeCartModal() {
   showCartModal.value = false;
 }
@@ -130,9 +150,8 @@ function closeCartModal() {
 async function submitCart(payload) {
   busy.value = true;
   try {
-    if (cartFormMode.value === "edit" && payload.id) {
+    if (payload.id) {
       const updated = await api.updateCart(payload.id, payload);
-      // update local collections
       carts.value = carts.value.map((c) => (c.id === updated.id ? updated : c));
       if (selectedCart.value?.cart?.id === updated.id) {
         selectedCart.value = { ...selectedCart.value, cart: updated };
@@ -148,10 +167,69 @@ async function submitCart(payload) {
   }
 }
 
+async function deleteCart(cart) {
+  busy.value = true;
+  try {
+    await api.deleteCart(cart.id);
+    carts.value = carts.value.filter((c) => c.id !== cart.id);
+    if (selectedCart.value?.cart?.id === cart.id) {
+      selectedCart.value = null;
+      currentView.value = "carts";
+    }
+  } finally {
+    busy.value = false;
+  }
+}
+
+function openMerchantModal(merchant = null) {
+  ui.openMerchantModal(
+    merchant || {
+      site_name: "",
+      site_base_url: "",
+      country: "",
+      default_currency: "",
+      description: "",
+      product_url_pattern: "",
+      category_url_pattern: "",
+    }
+  );
+}
+function closeMerchantModal() {
+  ui.closeMerchantModal();
+}
+
+async function submitMerchant(payload) {
+  busy.value = true;
+  try {
+    if (payload.id) {
+      const mer = await api.updateMerchant(payload.id, payload);
+      merchants.value = merchants.value.map((m) => (m.id === mer.id ? mer : m));
+    } else {
+      const mer = await api.createMerchant(payload);
+      merchants.value = [...merchants.value, mer];
+      ui.onMerchantCreated(mer.id);
+    }
+    if (!ui.returnToItemAfterMerchant) {
+      closeMerchantModal();
+    }
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function deleteMerchant(merchant) {
+  busy.value = true;
+  try {
+    await api.deleteMerchant(merchant.id);
+    merchants.value = merchants.value.filter((m) => m.id !== merchant.id);
+  } finally {
+    busy.value = false;
+  }
+}
+
 function openItemModal(item = null) {
   if (!selectedCart.value) return;
-  itemFormMode.value = item ? "edit" : "create";
-  itemFormData.value = item
+  const draft = item
     ? { ...item }
     : {
         merchant_id: merchants.value[0]?.id || "",
@@ -161,18 +239,21 @@ function openItemModal(item = null) {
         reference: "",
         quantity: 1,
       };
-  showItemModal.value = true;
+  ui.openItemModal(draft, merchants.value[0]?.id || "");
+}
+function closeItemModal() {
+  ui.closeItemModal();
 }
 
-function closeItemModal() {
-  showItemModal.value = false;
+function openMerchantModalFromItem(draft) {
+  ui.openMerchantFromItem(draft || ui.itemDraft);
 }
 
 async function submitItem(payload) {
   if (!selectedCart.value) return;
   busy.value = true;
   try {
-    if (itemFormMode.value === "edit" && payload.id) {
+    if (payload.id) {
       const updated = await api.updateItem(selectedCart.value.cart.id, payload.id, payload);
       selectedCart.value.items = (selectedCart.value.items || []).map((it) =>
         it.id === updated.id ? updated : it
@@ -187,44 +268,7 @@ async function submitItem(payload) {
   }
 }
 
-function openMerchantModal() {
-  showMerchantModal.value = true;
-}
-function closeMerchantModal() {
-  showMerchantModal.value = false;
-}
-
-async function createMerchant(payload) {
-  busy.value = true;
-  try {
-    const mer = await api.createMerchant(payload);
-    merchants.value = [...merchants.value, mer];
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function updateMerchant(payload) {
-  busy.value = true;
-  try {
-    const mer = await api.updateMerchant(payload.id, payload);
-    merchants.value = merchants.value.map((m) => (m.id === mer.id ? mer : m));
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function deleteMerchant(id) {
-  busy.value = true;
-  try {
-    await api.deleteMerchant(id);
-    merchants.value = merchants.value.filter((m) => m.id !== id);
-  } finally {
-    busy.value = false;
-  }
-}
-
-onMounted(loadCarts);
+onMounted(loadAll);
 </script>
 
 <style scoped>
@@ -234,6 +278,7 @@ onMounted(loadCarts);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 .brand {
   font-weight: 700;
@@ -250,36 +295,39 @@ onMounted(loadCarts);
   gap: 6px;
   color: var(--muted);
 }
-.layout {
+.nav {
+  display: flex;
+  gap: 8px;
+}
+.nav .active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.layout.single {
   padding: 24px;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 20px;
 }
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
+.card {
+  min-height: 60vh;
 }
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
-}
-.sidebar {
-  min-height: 520px;
-}
-.sidebar-header {
+.item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
 }
-.merchant-fab {
+.fab {
   position: fixed;
   bottom: 20px;
   right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #38bdf8);
+  color: #0b1120;
+  font-size: 28px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
 }
 </style>
