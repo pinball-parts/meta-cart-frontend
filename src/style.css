@@ -1,18 +1,18 @@
 :root {
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #22d3ee;
-  --border: #2e3b51;
-}
-[data-theme="light"] {
-  --bg: #f8fafc;
+  --bg: #ffffff;
   --panel: #ffffff;
-  --text: #0f172a;
-  --muted: #475569;
-  --accent: #0ea5e9;
-  --border: #e2e8f0;
+  --text: #000;
+  --muted: #6b7280;
+  --accent: #7f8083; /* neutral accent */
+  --border: #d1d5db;
+}
+[data-theme="dark"] {
+  --bg: #212121;
+  --panel: #16181d;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #7f8083;
+  --border: #2c2f36;
 }
 * {
   box-sizing: border-box;
@@ -72,9 +72,9 @@ textarea {
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.16);
 }
 .muted {
   color: var(--muted);

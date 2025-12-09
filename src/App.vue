@@ -1,5 +1,5 @@
 <template>
-  <div :data-theme="theme">
+  <div>
     <header class="header">
       <div class="brand">Meta Cart</div>
       <nav class="nav">
@@ -102,6 +102,7 @@ const ui = useUiStore();
 
 watch(isLight, (val) => {
   theme.value = val ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", theme.value);
 });
 
 async function loadAll() {
@@ -261,6 +262,9 @@ async function submitItem(payload) {
 }
 
 onMounted(loadAll);
+onMounted(() => {
+  document.documentElement.setAttribute("data-theme", theme.value);
+});
 </script>
 
 <style scoped>

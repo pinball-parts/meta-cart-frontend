@@ -12,9 +12,14 @@
     </div>
 
     <section class="section">
-      <div class="item-header">
-        <h3>Add item</h3>
-        <button @click="$emit('add-item')">New item</button>
+      <div class="hero">
+        <input
+          class="url-hero"
+          v-model="pendingUrl"
+          placeholder="https://shop.example/product"
+          @input="maybeSuggestMerchant"
+        />
+        <button class="hero-btn" @click="openItemWithUrl" :disabled="!pendingUrl">↑</button>
       </div>
     </section>
 
@@ -82,6 +87,8 @@
 
 <script setup>
 import { computed, ref } from "vue";
+const emit = defineEmits(["add-item", "edit-item", "edit-cart"]);
+
 const props = defineProps({
   cart: { type: Object, required: true },
   items: { type: Array, default: () => [] },
@@ -89,6 +96,8 @@ const props = defineProps({
   merchants: { type: Array, default: () => [] },
 });
 const groupMode = ref("merchant");
+const pendingUrl = ref("");
+const suggestedMerchant = ref("");
 
 const merchantLookup = computed(() => {
   const map = {};
@@ -102,6 +111,23 @@ function merchantName(id) {
   const mer = merchantLookup.value[id];
   if (!mer) return "Unknown merchant";
   return mer.site_name;
+}
+
+function maybeSuggestMerchant() {
+  const match = props.merchants.find((m) => pendingUrl.value && pendingUrl.value.startsWith(m.site_base_url));
+  suggestedMerchant.value = match ? match.id : "";
+}
+
+function openItemWithUrl() {
+  if (!pendingUrl.value) return;
+  maybeSuggestMerchant();
+  const payload = {
+    url: pendingUrl.value,
+    merchant_id: suggestedMerchant.value,
+  };
+  pendingUrl.value = "";
+  suggestedMerchant.value = "";
+  emit("add-item", payload);
 }
 
 const grouped = computed(() => {
@@ -138,25 +164,61 @@ const sortedAlpha = computed(() =>
   justify-content: space-between;
   align-items: center;
 }
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+.url-hero {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+}
+.hero-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+.hero-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
 }
 .group-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 .group-title {
   font-weight: 700;
-  margin-bottom: 6px;
+  padding: 6px 0;
+}
+.group + .group {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
 }
 .item {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel) 90%, var(--bg));
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
   display: flex;
   gap: 12px;
   justify-content: space-between;
@@ -178,5 +240,13 @@ const sortedAlpha = computed(() =>
 .ghost.small.active {
   border-color: var(--accent);
   color: var(--accent);
+}
+.inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.url-input {
+  min-width: 320px;
 }
 </style>
