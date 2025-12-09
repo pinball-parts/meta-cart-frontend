@@ -168,7 +168,7 @@ const sortedAlpha = computed(() =>
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--panel);
+  background: var(--form-field);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
