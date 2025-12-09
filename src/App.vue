@@ -220,10 +220,21 @@ async function deleteMerchant(merchant) {
   }
 }
 
-function openItemModal(item = null) {
+function openItemModal(payload = null) {
   if (!selectedCart.value) return;
-  const draft = item
-    ? { ...item }
+  const items = selectedCart.value.items || [];
+  // If payload has a URL, check for an existing item with that URL.
+  const url = payload && payload.url;
+  if (url) {
+    const existing = items.find((it) => it.url === url);
+    if (existing) {
+      ui.openItemModal({ ...existing }, merchants.value[0]?.id || "");
+      return;
+    }
+  }
+
+  const draft = payload
+    ? { merchant_id: merchants.value[0]?.id || "", quantity: 1, ...payload }
     : {
         merchant_id: merchants.value[0]?.id || "",
         url: "",
