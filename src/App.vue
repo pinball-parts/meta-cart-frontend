@@ -18,7 +18,6 @@
 
     <main v-if="currentView === 'carts'" class="layout single">
       <section class="card content">
-        <h2>Carts</h2>
         <cart-list
           :carts="carts"
           :selected-id="selectedCart?.cart?.id"
@@ -31,13 +30,6 @@
 
     <main v-else-if="currentView === 'items'" class="layout single">
       <section class="card content">
-        <div class="item-header">
-          <div>
-            <h2>{{ selectedCart?.cart?.title }}</h2>
-            <p class="muted">{{ selectedCart?.cart?.description || "No description" }}</p>
-          </div>
-          <button class="ghost" @click="toCarts">Back to carts</button>
-        </div>
         <cart-detail
           v-if="selectedCart"
           :cart="selectedCart.cart"
